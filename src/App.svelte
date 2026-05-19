@@ -1,0 +1,22 @@
+<script lang="ts">
+    import { authState } from './lib/auth.svelte';
+    import { installErrorDoctor } from './lib/error-doctor.svelte';
+    import { startServerHealthPolling } from './lib/server-health.svelte';
+    import Login from './components/Login.svelte';
+    import Layout from './components/Layout.svelte';
+    import ErrorDoctor from './components/ErrorDoctor.svelte';
+    import MaintenanceOverlay from './components/MaintenanceOverlay.svelte';
+
+    installErrorDoctor();
+    startServerHealthPolling();
+</script>
+
+{#if authState.activeUser}
+    <Layout />
+{/if}
+{#if !authState.activeUser || authState.addingAccount}
+    <Login />
+{/if}
+
+<ErrorDoctor />
+<MaintenanceOverlay />
