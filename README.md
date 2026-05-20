@@ -39,7 +39,7 @@ docker run --rm -p 8080:80 ghcr.io/jr551/mailcow-rest-api-webmail:master
 Use the versioned alpha image when you want a fixed tag:
 
 ```sh
-docker pull ghcr.io/jr551/mailcow-rest-api-webmail:v0.1.0-alpha.1
+docker pull ghcr.io/jr551/mailcow-rest-api-webmail:0.1.0-alpha.1
 docker pull ghcr.io/jr551/mailcow-rest-api-webmail:master
 ```
 
