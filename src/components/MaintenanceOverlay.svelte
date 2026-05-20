@@ -1,6 +1,6 @@
 <script lang="ts">
     // Frosted-glass "we'll be back in a moment" panel that pops over the
-    // SPA when the server stops answering. Polls /imap-rest/health on a
+    // SPA when the server stops answering. Polls /health on a
     // 10s interval (the actual polling lives in lib/server-health, this
     // component just listens). Also offers a "browse cached emails"
     // dropdown so the user can keep skimming what was loaded into

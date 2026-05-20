@@ -1,6 +1,6 @@
 // Tracks "is the imap-rest server up?" — flips true when the error
 // doctor sees >=2 5xx responses on /v1/ routes within 30s (or when
-// /imap-rest/health stops answering 200), and back to false when a
+// /health stops answering 200), and back to false when a
 // fresh health probe succeeds.
 //
 // MaintenanceOverlay listens to this state and shows a frosted-glass
@@ -77,17 +77,20 @@ function markUp() {
 
 async function probe(): Promise<void> {
     state.lastProbeAt = Date.now();
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), PROBE_TIMEOUT_MS);
-    try {
-        const res = await fetch('/imap-rest/health', { signal: ctl.signal, cache: 'no-store' });
-        if (res.ok) {
-            noteServerOk();
+    for (const path of ['/health', '/imap-rest/health']) {
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), PROBE_TIMEOUT_MS);
+        try {
+            const res = await fetch(path, { signal: ctl.signal, cache: 'no-store' });
+            if (res.ok) {
+                noteServerOk();
+                return;
+            }
+        } catch {
+            // Try the next known deployment path.
+        } finally {
+            clearTimeout(timer);
         }
-    } catch {
-        // Still down — overlay stays up, we'll try again on the next tick.
-    } finally {
-        clearTimeout(timer);
     }
 }
 
