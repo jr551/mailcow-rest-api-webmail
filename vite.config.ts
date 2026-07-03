@@ -4,7 +4,7 @@ import { resolve } from 'path';
 
 const devApiTarget = process.env.VITE_DEV_API_TARGET || 'http://localhost:3001';
 
-// Built assets are served by the Fastify server under /webmail/.
+// Built assets are served as static files under /webmail/ (nginx in the Docker image).
 // `base` makes Vite emit asset URLs prefixed with /webmail/.
 export default defineConfig({
     plugins: [svelte()],
