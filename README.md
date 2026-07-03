@@ -12,6 +12,20 @@
 
 ## Quick Start
 
+New to mailcow, Docker, or self-hosting in general? Run the setup script — it
+copies the config files for you, finds your mailcow Docker network
+automatically, starts the containers, and checks that everything actually
+works before telling you you're done:
+
+```sh
+git clone https://github.com/jr551/mailcow-rest-api-webmail.git
+cd mailcow-rest-api-webmail
+./scripts/setup.sh
+```
+
+It only touches `docker-compose.yml` and `.env` if they don't already exist,
+so it's safe to re-run any time (e.g. after `git pull`).
+
 The frontend is static, but the browser must be able to reach `mailcow-rest-api` on the same origin:
 
 ```text
@@ -21,7 +35,9 @@ The frontend is static, but the browser must be able to reach `mailcow-rest-api`
 /openapi.json  -> mailcow-rest-api
 ```
 
-Run the full example stack beside mailcow:
+`./scripts/setup.sh` only gets you a local/loopback deployment. To serve real
+users you still need a TLS reverse proxy in front — see **Setup Modes**
+below. If you'd rather do the steps by hand:
 
 ```sh
 cp docker-compose.example.yml docker-compose.yml
@@ -39,7 +55,7 @@ docker run --rm -p 8080:80 ghcr.io/jr551/mailcow-rest-api-webmail:master
 Use the versioned alpha image when you want a fixed tag:
 
 ```sh
-docker pull ghcr.io/jr551/mailcow-rest-api-webmail:0.1.0-alpha.2
+docker pull ghcr.io/jr551/mailcow-rest-api-webmail:0.1.0-alpha.3
 docker pull ghcr.io/jr551/mailcow-rest-api-webmail:master
 ```
 

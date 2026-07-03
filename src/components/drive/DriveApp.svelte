@@ -13,7 +13,6 @@
     import DriveList from './DriveList.svelte';
     import DriveUploadZone from './DriveUploadZone.svelte';
     import DrivePreview from './DrivePreview.svelte';
-    import TldrawPad from '../editor/TldrawPad.svelte';
     import TextEditor from '../editor/TextEditor.svelte';
     import Icon from '../Icon.svelte';
     import type { DriveItem } from '../../lib/drive-api';
@@ -206,13 +205,15 @@
     {/if}
 
     {#if driveState.drawingEditor}
-        <TldrawPad
-            mode={driveState.drawingEditor.mode}
-            defaultName={driveState.drawingEditor.path.split('/').pop() || 'drawing.tldr'}
-            initialSnapshot={driveState.drawingEditor.initialSnapshot}
-            onSave={saveDrawing}
-            onCancel={closeDrawingEditor}
-        />
+        {#await import('../editor/TldrawPad.svelte') then mod}
+            <mod.default
+                mode={driveState.drawingEditor.mode}
+                defaultName={driveState.drawingEditor.path.split('/').pop() || 'drawing.tldr'}
+                initialSnapshot={driveState.drawingEditor.initialSnapshot}
+                onSave={saveDrawing}
+                onCancel={closeDrawingEditor}
+            />
+        {/await}
     {/if}
 
     {#if driveState.textEditor}

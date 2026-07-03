@@ -1,6 +1,6 @@
 {
     "name": "mailcow-rest-api-webmail",
-    "version": "0.1.0-alpha.2",
+    "version": "0.1.0-alpha.3",
     "private": false,
     "type": "module",
     "scripts": {
@@ -9,7 +9,8 @@
         "preview": "vite preview",
         "check": "svelte-check --tsconfig ./tsconfig.json",
         "test:e2e": "playwright test",
-        "check:config": "node scripts/check-config.mjs"
+        "check:config": "node scripts/check-config.mjs",
+        "setup": "bash scripts/setup.sh"
     },
     "repository": {
         "type": "git",

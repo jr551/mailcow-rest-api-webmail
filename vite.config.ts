@@ -20,6 +20,18 @@ export default defineConfig({
                 main: resolve(__dirname, 'index.html'),
                 mobile: resolve(__dirname, 'mobile/index.html'),
             },
+            output: {
+                // Heavy, feature-gated libraries (PDF rendering/editing, the
+                // drawing pad, OCR) must never get folded into a chunk that
+                // both entry points load eagerly. Naming them explicitly
+                // keeps them isolated even if a future static import
+                // accidentally makes them "shared" between main and mobile.
+                manualChunks: {
+                    pdf: ['pdfjs-dist', 'pdf-lib'],
+                    tldraw: ['tldraw', '@tiptap/core', '@tiptap/starter-kit'],
+                    tesseract: ['tesseract.js'],
+                },
+            },
         },
     },
     server: {

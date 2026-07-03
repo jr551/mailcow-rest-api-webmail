@@ -2,7 +2,7 @@
     import { authState, startExpiryWatch } from '../lib/auth.svelte';
     import { probeCapabilities } from '../lib/settings.svelte';
     import { initImapSync } from '../lib/ai-threads.svelte';
-    import { installErrorDoctor } from '../lib/error-doctor.svelte';
+    import { doctor, installErrorDoctor } from '../lib/error-doctor.svelte';
     import { mobileState, navigate, installAndroidBackHandler } from './lib/store.svelte';
     import { setAppBadge, onResume } from './lib/native-bridge';
     import { onMount } from 'svelte';
@@ -15,7 +15,6 @@
     import AiChatView from './components/AiChatView.svelte';
     import DriveView from './components/DriveView.svelte';
     import BottomNav from './components/BottomNav.svelte';
-    import ErrorDoctor from '../components/ErrorDoctor.svelte';
     import BackgroundTaskFloater from '../components/BackgroundTaskFloater.svelte';
     import PwaUpdatePrompt from '../components/PwaUpdatePrompt.svelte';
     import { settings, setTesseractOcrInstalled, setPhishingScanOcrInline } from '../lib/settings.svelte';
@@ -166,7 +165,11 @@
     </div>
 {/if}
 
-<ErrorDoctor />
+{#if doctor.incident}
+    {#await import('../components/ErrorDoctor.svelte') then mod}
+        <mod.default />
+    {/await}
+{/if}
 {#if authState.activeUser}
     <BackgroundTaskFloater />
 {/if}

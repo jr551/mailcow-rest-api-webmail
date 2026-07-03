@@ -2,7 +2,6 @@
     import { getObjectUrl, fetchBlob } from '../../lib/drive-api';
     import { renderMarkdown } from '../../lib/markdown';
     import Icon from '../Icon.svelte';
-    import PdfViewer from '../editor/PdfViewer.svelte';
 
     interface Props {
         item: { name: string; path: string; size: number; contentType?: string } | null;
@@ -146,7 +145,9 @@
                     </div>
                 {:else if isPdf(item.name) && pdfBytes}
                     <div class="pdf-wrap">
-                        <PdfViewer bytes={pdfBytes} filename={item.name} onClose={onClose} inline={true} />
+                        {#await import('../editor/PdfViewer.svelte') then mod}
+                            <mod.default bytes={pdfBytes} filename={item.name} onClose={onClose} inline={true} />
+                        {/await}
                     </div>
                 {:else if isOffice(item.name)}
                     <iframe src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`} title={item.name} class="preview-iframe"></iframe>
