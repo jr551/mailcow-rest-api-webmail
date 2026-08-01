@@ -74,6 +74,19 @@ export function sanitizeHtml(html: string, opts: SanitizeOptions = {}): string {
     return out;
 }
 
+// While the privacy proxy is still fetching, the message must not render
+// the sender's original URLs — that would leak the read to them, which is
+// the whole thing the proxy exists to prevent — and it must not render a
+// broken-image icon either, which is what happens when the src is simply
+// removed. Park the URL on a data attribute and let CSS draw a placeholder
+// so the layout is stable and the state is legible.
+export function placeholderRemoteImages(html: string): string {
+    return html.replace(
+        /<img\b([^>]*?)\bsrc\s*=\s*("https?:[^"]*"|'https?:[^']*'|https?:[^\s>]+)/gi,
+        '<img $1data-loading-src=$2 class="imr-img-loading" alt="Loading image…"'
+    );
+}
+
 export function buildIframeSrcDoc(html: string, theme: 'light' | 'dark'): string {
     const fg = theme === 'dark' ? '#e8eaef' : '#0f1115';
     const bg = theme === 'dark' ? '#16191f' : '#ffffff';
@@ -107,6 +120,28 @@ export function buildIframeSrcDoc(html: string, theme: 'light' | 'dark'): string
         : ''}
     a { color: ${link}; }
     img { max-width: 100%; height: auto; }
+    /* Placeholder for an image the proxy hasn't returned yet. Sized from
+     * the element's own width/height where the mail provides them, so the
+     * layout doesn't jump when the real image arrives. */
+    img.imr-img-loading {
+        min-width: 24px;
+        min-height: 24px;
+        background: linear-gradient(90deg,
+            ${theme === 'dark' ? '#232833' : '#eef0f4'} 25%,
+            ${theme === 'dark' ? '#2b313d' : '#f7f8fa'} 37%,
+            ${theme === 'dark' ? '#232833' : '#eef0f4'} 63%);
+        background-size: 400% 100%;
+        animation: imr-shimmer 1.4s ease-in-out infinite;
+        border-radius: 4px;
+        color: transparent;
+    }
+    @keyframes imr-shimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0 50%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        img.imr-img-loading { animation: none; }
+    }
     blockquote { border-left: 3px solid ${border}; margin: 0; padding: 0 12px; color: ${muted}; }
     pre { white-space: pre-wrap; word-wrap: break-word; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; }
     table { max-width: 100%; }

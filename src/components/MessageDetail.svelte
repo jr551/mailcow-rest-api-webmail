@@ -2,7 +2,7 @@
     import { ui, showToast } from '../lib/store.svelte';
     import { markSpam, markTrusted, isTrustedSender } from '../lib/spam-feedback.svelte';
     import { themeState } from '../lib/theme.svelte';
-    import { sanitizeHtml, buildIframeSrcDoc } from '../lib/sanitize';
+    import { sanitizeHtml, buildIframeSrcDoc, placeholderRemoteImages } from '../lib/sanitize';
     import { proxyImagesInHtml, isProxyHealthy } from '../lib/image-proxy';
     import { formatFullDate, formatBytes, formatAddress, formatAddressList, isTrackingEmail, isNotificationMessage, isSmsMessage } from '../lib/format';
     import NotificationBubble from './NotificationBubble.svelte';
@@ -431,7 +431,13 @@
         if (!ui.detail || !ui.detail.html) return '';
         const useProxy = settings.proxyImages && allowImages && isProxyHealthy();
         const ready = proxiedSrcDoc && proxiedSrcDoc.uid === ui.detail.uid;
-        const html = useProxy && ready ? proxiedSrcDoc!.html : baseSafeHtml;
+        // While the proxy is still fetching, show placeholders rather than
+        // the sender's own URLs: rendering those would leak the read to
+        // them, which is exactly what the proxy exists to prevent, and
+        // dropping the src outright just yields a broken-image icon.
+        const html = useProxy
+            ? (ready ? proxiedSrcDoc!.html : placeholderRemoteImages(baseSafeHtml))
+            : baseSafeHtml;
         return buildIframeSrcDoc(html, viewerEffectiveTheme());
     });
 
@@ -1944,6 +1950,30 @@
         flex: 0 0 auto;
         flex-wrap: wrap;
     }
+    /* Icon-only actions sit shoulder to shoulder and are told apart mostly
+       by glyph, so they need a real target and a focus ring that doesn't
+       depend on colour alone. */
+    .actions :global(.btn) {
+        min-height: 32px;
+        min-width: 32px;
+    }
+    .actions :global(.btn:focus-visible) {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+    }
+    /* Delete is the one action here that can't be undone from the toolbar.
+       Push it away from its neighbours so it can't be caught on the way to
+       Move, and give it a slightly larger target. */
+    .actions :global(.btn-danger) {
+        margin-left: 10px;
+        min-width: 38px;
+    }
+    @media (pointer: coarse) {
+        .actions :global(.btn) {
+            min-height: 44px;
+            min-width: 44px;
+        }
+    }
     .ai-btn-other {
         background: linear-gradient(135deg,
             color-mix(in srgb, var(--warning) 18%, var(--bg-surface)),
@@ -2759,8 +2789,11 @@
      * visible while scrolling; rail itself is non-interactive — only
      * the bubbles inside catch clicks. */
     .scan-bubble-rail {
-        position: sticky;
-        top: 8px;
+        /* Static, not sticky: as a sticky element it rode over the message
+           while the user scrolled, so an optional background scan ended up
+           covering the thing it is commenting on. In flow it takes its own
+           space at the top and scrolls away like any other banner. */
+        position: relative;
         z-index: 5;
         margin: 8px 12px 0;
         display: flex;

@@ -52,6 +52,29 @@ export function isFolderExpanded(path: string, defaultOpen = true): boolean {
     return path in _state.expanded ? _state.expanded[path] : defaultOpen;
 }
 
+/** Collapse every folder the user hasn't explicitly opened. */
+export function collapseAllFolders(paths: string[]) {
+    for (const p of paths) _state.expanded[p] = false;
+    writeJSON(EXPAND_KEY, _state.expanded);
+}
+
+/**
+ * Default disclosure for a node the user has never touched.
+ *
+ * Everything used to default open, so an account with deep nesting
+ * unfolded into a wall of rows and pushed the actual mailboxes below the
+ * fold. Top-level folders stay open — that's the useful hierarchy — and
+ * deeper branches open only when they contain wherever the user currently
+ * is, so the active folder is always reachable without scrolling past
+ * everything else. An explicit choice still wins, and is remembered.
+ */
+export function defaultFolderOpen(path: string, depth: number, activePath: string, delimiter = '/'): boolean {
+    if (depth === 0) return true;
+    if (!activePath) return false;
+    if (activePath === path) return true;
+    return activePath.startsWith(path + delimiter);
+}
+
 // --- Tree building ---------------------------------------------------------
 
 export interface FolderNode<T extends { path: string; delimiter: string }> {
@@ -306,14 +329,25 @@ export async function suggestFolderEmojiBatch(
     return results;
 }
 
-/** Flatten the tree into a render-ready list, honouring expand/collapse. */
+/**
+ * Flatten the tree into a render-ready list, honouring expand/collapse.
+ *
+ * `activePath` decides the default for branches the user has never
+ * touched: only the ones containing it open, so a deeply nested account
+ * doesn't unfold into a wall of rows on first load.
+ */
 export function flattenTree<T extends { path: string; delimiter: string }>(
-    tree: FolderNode<T>[]
+    tree: FolderNode<T>[],
+    activePath = ''
 ): FolderNode<T>[] {
     const out: FolderNode<T>[] = [];
     function walk(n: FolderNode<T>) {
         out.push(n);
-        if (n.children.length && isFolderExpanded(n.path)) {
+        const open = isFolderExpanded(
+            n.path,
+            defaultFolderOpen(n.path, n.depth, activePath, n.mailbox.delimiter || '/')
+        );
+        if (n.children.length && open) {
             for (const c of n.children) walk(c);
         }
     }

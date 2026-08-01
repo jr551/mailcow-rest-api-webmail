@@ -5,7 +5,7 @@
     import { folderIcon, isGmailFolder, isGmailContainer } from '../lib/format';
     import {
         folderPrefs, setFolderIcon, setFolderExpanded, isFolderExpanded,
-        buildFolderTree, flattenTree, getFolderIcon,
+        buildFolderTree, flattenTree, getFolderIcon, defaultFolderOpen, collapseAllFolders,
         suggestFolderEmoji, suggestFolderEmojiBatch, isAiSuggestAvailable,
         ICON_STYLES, type IconStyle, type FolderNode
     } from '../lib/folder-prefs.svelte';
@@ -74,7 +74,7 @@
         // Hide internal storage folders (settings sync, future caches).
         // The leading `.storage_` prefix is reserved for webmail's own
         // bookkeeping; users should never see those rows.
-        return flattenTree(tree).filter((n) => !n.path.startsWith('.storage_'));
+        return flattenTree(tree, ui.selectedPath).filter((n) => !n.path.startsWith('.storage_'));
     });
 
     function prettyFolder(label: string): string {
@@ -91,7 +91,16 @@
     }
 
     function toggle(path: string) {
-        setFolderExpanded(path, !isFolderExpanded(path));
+        const node = visibleNodes.find((n) => n.path === path);
+        const current = isFolderExpanded(
+            path,
+            node ? defaultFolderOpen(path, node.depth, ui.selectedPath, node.mailbox.delimiter || '/') : true
+        );
+        setFolderExpanded(path, !current);
+    }
+
+    function collapseAll() {
+        collapseAllFolders(visibleNodes.filter((n) => n.children.length && n.depth > 0).map((n) => n.path));
     }
 
     // --- Context menu ----------------------------------------------------
@@ -278,7 +287,10 @@
             <ul>
                 {#each visibleNodes as node (node.path)}
                     {@const icon = renderIcon(node)}
-                    {@const expanded = isFolderExpanded(node.path)}
+                    {@const expanded = isFolderExpanded(
+                        node.path,
+                        defaultFolderOpen(node.path, node.depth, ui.selectedPath, node.mailbox.delimiter || '/')
+                    )}
                     {@const hasChildren = node.children.length > 0}
                     <li>
                         <div
@@ -440,6 +452,18 @@
                 <Icon name="plus" size={13} />
                 <span>New folder</span>
             </button>
+            {#if visibleNodes.some((n) => n.children.length && n.depth > 0)}
+                <button
+                    type="button"
+                    class="footer-btn"
+                    onclick={collapseAll}
+                    title="Collapse every nested folder"
+                    data-testid="sidebar-collapse-all"
+                >
+                    <Icon name="chevronRight" size={13} />
+                    <span>Collapse all</span>
+                </button>
+            {/if}
             {#if isAiSuggestAvailable()}
                 <div class="ai-icons-wrap">
                     <button

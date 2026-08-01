@@ -1275,6 +1275,7 @@
         min-width: 0;
         min-height: 0;
         position: relative;
+        overflow-x: hidden;
     }
     /* Glassy folder-switch overlay. Sits over the rows area only — the
        header is below in the DOM but rendered above (z-index) so the
@@ -1899,9 +1900,17 @@
     .rows {
         flex: 1;
         overflow-y: auto;
+        /* A row whose content momentarily exceeds the column — a long
+         * subject before ellipsis is applied, a badge appearing, the
+         * crawler appending rows — would otherwise open a horizontal
+         * scrollbar at the foot of the pane. Because that happens on a
+         * timer, the scrollbar didn't just appear, it pulsed. Rows are
+         * meant to truncate, never to scroll sideways. */
+        overflow-x: hidden;
         list-style: none;
         margin: 0;
         padding: 0;
+        min-width: 0;
     }
     .rows-loading {
         display: flex;
