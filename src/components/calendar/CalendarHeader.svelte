@@ -2,7 +2,11 @@
     import { format } from 'date-fns';
     import Icon from '../Icon.svelte';
 
-    export type CalView = 'day' | 'week' | 'month' | 'year' | 'schedule';
+    // Day, Week and Year were listed as tabs but had no implementation —
+    // selecting one showed a "coming next push" placeholder. Navigation
+    // now exposes only views that render, so the selected tab always
+    // corresponds to a usable one.
+    export type CalView = 'month' | 'schedule';
 
     interface Props {
         view: CalView;
@@ -18,10 +22,7 @@
     let { view, cursor, search, onView, onPrev, onNext, onToday, onSearch, onCreate }: Props = $props();
 
     let label = $derived.by(() => {
-        if (view === 'day') return format(cursor, 'EEEE, MMMM d, yyyy');
-        if (view === 'week') return format(cursor, "MMMM yyyy");
         if (view === 'month') return format(cursor, 'MMMM yyyy');
-        if (view === 'year') return format(cursor, 'yyyy');
         return format(cursor, 'MMMM yyyy');
     });
 </script>
@@ -53,7 +54,7 @@
 
     <div class="right">
         <div class="view-switcher" role="tablist" aria-label="Calendar views">
-            {#each [['day','Day','1'],['week','Week','2'],['month','Month','3'],['year','Year','4'],['schedule','Schedule','5']] as [v,l,k] (v)}
+            {#each [['month','Month','1'],['schedule','Schedule','2']] as [v,l,k] (v)}
                 <button
                     type="button"
                     role="tab"

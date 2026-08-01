@@ -835,6 +835,20 @@
                 >
                     <Icon name="spy" size={16} />
                 </button>
+                {#if trackOpens}
+                    <!-- Tracking is invisible to the recipient, so it must be
+                         plainly visible to the sender for as long as it is on
+                         — an icon that merely looks "active" is too easy to
+                         leave enabled without noticing. -->
+                    <span class="tracking-note" data-testid="compose-tracking-note">
+                        Tracking on — you'll be told when this is opened.
+                        <button
+                            type="button"
+                            class="tracking-off"
+                            onclick={() => { trackOpens = false; }}
+                        >Turn off</button>
+                    </span>
+                {/if}
                 {#if !smtpAvailable()}
                     <span class="hint" data-testid="compose-status">
                         Sending isn't enabled — your text will be saved as a draft.
@@ -1257,6 +1271,28 @@
     }
     /* Spy / read-tracker toggle. Off state shows text label so it's
      * unmistakeable; on state glows red so you can't forget it's active. */
+    .tracking-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        background: var(--bg-hover);
+        border-radius: 999px;
+        padding: 3px 6px 3px 10px;
+    }
+    .tracking-off {
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 999px;
+    }
+    .tracking-off:hover { background: var(--bg-surface); }
+
     .spy-btn {
         display: inline-flex;
         align-items: center;

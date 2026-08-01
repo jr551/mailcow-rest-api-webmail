@@ -24,6 +24,11 @@ export interface ChatThread {
      *  first-user-message snippet keeps overwriting the AI title and we
      *  end up showing leaked sentinel JSON in the sidebar. */
     aiTitled?: boolean;
+    /** A chat that exists only so the composer has somewhere to put the
+     *  first message. Never persisted: opening the AI workspace used to
+     *  create *and save* an empty thread, so every visit left another
+     *  "0 msgs" row in the history. Cleared by appendMessage. */
+    draft?: boolean;
 }
 
 export interface AiToolPrefs {
@@ -50,7 +55,12 @@ function readThreads(): ChatThread[] {
         if (!raw) return [];
         const arr = JSON.parse(raw) as ChatThread[];
         if (!Array.isArray(arr)) return [];
-        return arr.filter((t) => t && Array.isArray(t.messages));
+        return arr
+            .filter((t) => t && Array.isArray(t.messages))
+            // Clean up the empty threads earlier versions persisted on
+            // every visit. A thread with no messages carries nothing, so
+            // dropping it can't lose anything the user wrote.
+            .filter((t) => t.messages.length > 0);
     } catch { return []; }
 }
 
@@ -82,7 +92,8 @@ let lastSyncAt = 0;
 
 function writeThreads(threads: ChatThread[]) {
     try {
-        let trimmed = threads;
+        // A draft has never been written to, so it must not reach storage.
+        let trimmed = threads.filter((t) => !t.draft);
         if (trimmed.length > MAX_THREADS) {
             trimmed = [...threads].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_THREADS);
         }
@@ -126,15 +137,22 @@ export function clearAutoSend() {
 
 export const aiState = state;
 
-export function newThread(): ChatThread {
+// `persist: true` forces the thread to be saved straight away — used when
+// something other than the composer creates it with content in mind.
+// The default is a draft: visible in the sidebar so the user can type into
+// it, but not written to storage until it actually holds a message.
+export function newThread(opts: { persist?: boolean } = {}): ChatThread {
     const t: ChatThread = {
         id: uid(),
         title: '💬 New chat',
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        messages: []
+        messages: [],
+        ...(opts.persist ? {} : { draft: true })
     };
-    state.threads = [t, ...state.threads];
+    // Replace any untouched draft rather than stacking them up, so
+    // navigating in and out of the workspace can't accumulate rows.
+    state.threads = [t, ...state.threads.filter((x) => !x.draft)];
     state.activeId = t.id;
     writeThreads(state.threads);
     return t;
@@ -169,6 +187,8 @@ export function appendMessage(id: string, msg: ChatMessage) {
         messages: [...t.messages, msg],
         updatedAt: Date.now()
     };
+    // First real content promotes the draft into a saved conversation.
+    delete updated.draft;
     if (updated.title === '💬 New chat' && msg.role === 'user') {
         // Strip the [[email:{...}]] / "Email context (for your reference, …)"
         // sentinel so message-detail-spawned chats don't show raw JSON

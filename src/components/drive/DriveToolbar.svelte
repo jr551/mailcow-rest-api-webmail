@@ -86,23 +86,31 @@
             </button>
             {#if showNewFolder}
                 <div class="menu">
-                    <div class="menu-row">
+                    <!-- Each field/button pair is its own labelled group. Both
+                         buttons used to be announced as just "Create", so
+                         without the visual layout there was no way to tell
+                         which one made a folder and which made a drawing. -->
+                    <div class="menu-row" role="group" aria-labelledby="drive-new-folder-label">
+                        <label id="drive-new-folder-label" class="sr-only" for="drive-new-folder-name">Folder name</label>
                         <input
+                            id="drive-new-folder-name"
                             type="text"
                             placeholder="Folder name"
                             bind:value={newFolderName}
                             onkeydown={(e) => e.key === 'Enter' && onCreateFolder()}
                         />
-                        <button type="button" class="btn primary" onclick={onCreateFolder}>Create</button>
+                        <button type="button" class="btn primary" onclick={onCreateFolder} aria-label="Create folder">Create</button>
                     </div>
-                    <div class="menu-row">
+                    <div class="menu-row" role="group" aria-labelledby="drive-new-drawing-label">
+                        <label id="drive-new-drawing-label" class="sr-only" for="drive-new-drawing-name">Drawing name</label>
                         <input
+                            id="drive-new-drawing-name"
                             type="text"
                             placeholder="Drawing name"
                             bind:value={newDrawingName}
                             onkeydown={(e) => e.key === 'Enter' && onCreateDrawing()}
                         />
-                        <button type="button" class="btn primary" onclick={onCreateDrawing}>Create</button>
+                        <button type="button" class="btn primary" onclick={onCreateDrawing} aria-label="Create drawing">Create</button>
                     </div>
                     <button type="button" class="menu-item" onclick={() => { showNewFolder = false; onUploadClick(); }}>
                         <Icon name="upload" size={16} />

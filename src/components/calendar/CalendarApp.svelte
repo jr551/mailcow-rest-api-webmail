@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { addDays, addMonths, addYears, addWeeks, parseISO } from 'date-fns';
+    import { addDays, addMonths, parseISO } from 'date-fns';
     import CalendarHeader, { type CalView } from './CalendarHeader.svelte';
     import CalendarSidebar from './CalendarSidebar.svelte';
     import MonthView from './MonthView.svelte';
@@ -18,10 +18,7 @@
     onMount(() => { loadCalendar(); });
 
     function go(direction: 1 | -1) {
-        if (view === 'day') cursor = addDays(cursor, direction);
-        else if (view === 'week') cursor = addWeeks(cursor, direction);
-        else if (view === 'month') cursor = addMonths(cursor, direction);
-        else if (view === 'year') cursor = addYears(cursor, direction);
+        if (view === 'month') cursor = addMonths(cursor, direction);
         else cursor = addDays(cursor, 30 * direction); // schedule = 60-day window
     }
 
@@ -47,11 +44,8 @@
         const t = e.target as HTMLElement;
         if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
         if (modalOpen) return;
-        if (e.key === '1') view = 'day';
-        else if (e.key === '2') view = 'week';
-        else if (e.key === '3') view = 'month';
-        else if (e.key === '4') view = 'year';
-        else if (e.key === '5') view = 'schedule';
+        if (e.key === '1') view = 'month';
+        else if (e.key === '2') view = 'schedule';
         else if (e.key === 't' || e.key === 'T') cursor = new Date();
         else if (e.key === 'c') openCreate();
     }
@@ -83,13 +77,8 @@
         <div class="main">
             {#if view === 'month'}
                 <MonthView {cursor} search={searchQuery} onCreateOn={(d) => openCreate(d)} onOpenEvent={openEdit} />
-            {:else if view === 'schedule'}
-                <ScheduleView {cursor} search={searchQuery} onOpenEvent={openEdit} />
             {:else}
-                <div class="placeholder" data-testid="cal-view-placeholder">
-                    <p>{view.charAt(0).toUpperCase() + view.slice(1)} view coming next push.</p>
-                    <p class="muted">For now, switch to <strong>Month</strong> or <strong>Schedule</strong>.</p>
-                </div>
+                <ScheduleView {cursor} search={searchQuery} onOpenEvent={openEdit} />
             {/if}
         </div>
     </div>
@@ -107,15 +96,4 @@
     .cal-app { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; background: var(--bg-base); }
     .body { display: flex; flex: 1; min-height: 0; }
     .main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-    .placeholder {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        color: var(--text-secondary);
-        font-size: 13.5px;
-    }
-    .placeholder .muted { color: var(--text-tertiary); font-size: 12px; }
 </style>

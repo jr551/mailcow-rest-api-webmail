@@ -1,4 +1,28 @@
 <script lang="ts">
+    // Session status wording.
+    //
+    // The list used to print "Active · expires just now": the label came
+    // from "is this the session we're using", the time from a relative
+    // formatter, and nothing reconciled them. A token past its expiry was
+    // still described as Active, and a token seconds from expiry read as
+    // already gone. Decide both from the same timestamp, and treat the
+    // last few minutes as their own state rather than a boundary the
+    // relative formatter has to phrase.
+    const EXPIRING_SOON_MS = 5 * 60 * 1000;
+    function sessionStatus(expiresAt: number, isActive: boolean): string {
+        const remaining = expiresAt - Date.now();
+        if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+            return isActive ? 'Active · no expiry set' : 'Signed in · no expiry set';
+        }
+        if (remaining <= 0) return 'Expired — sign in again to continue';
+        if (remaining <= EXPIRING_SOON_MS) {
+            const mins = Math.max(1, Math.round(remaining / 60000));
+            return `Expiring soon · renews or ends in ${mins} min`;
+        }
+        const label = isActive ? 'Active' : 'Signed in';
+        return `${label} · expires ${relativeTime(new Date(expiresAt).toISOString())}`;
+    }
+
     import { onMount } from 'svelte';
     import {
         settings, capabilities, setLlm, setUseCustomLlm, setDensity, setAlwaysAllowImages, setGroupThreads, setProxyImages, setPermanentSignIn, setPhishingScan, setTrackOpensDefault, setAiSuggestSubjectOnBlur, setPhishingScanTimeoutSec, setPhishingScanPromptAddendum, setPhishingScanConfidenceFloor,
@@ -966,8 +990,8 @@
                                         <Avatar email={s.user} size={28} />
                                         <div class="session-text">
                                             <span class="session-user">{s.user}</span>
-                                            <span class="muted small">
-                                                {s.user === authState.activeUser ? 'Active' : 'Signed in'} · expires {relativeTime(new Date(s.expiresAt).toISOString())}
+                                            <span class="muted small" title={new Date(s.expiresAt).toLocaleString()}>
+                                                {sessionStatus(s.expiresAt, s.user === authState.activeUser)}
                                             </span>
                                         </div>
                                         {#if s.user === authState.activeUser}

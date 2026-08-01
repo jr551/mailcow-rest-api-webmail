@@ -289,8 +289,20 @@
         showToast('success', `Deleted ${path}`);
     }
 
+    // "Not now" is remembered for a cooldown rather than forever, so the
+    // offer can resurface eventually without the banner permanently
+    // occupying a strip of an information-dense mail UI. The old boolean
+    // value is honoured as a dismissal so upgrading doesn't re-nag.
+    const INSTALL_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
     function loadInstallDismissed(): boolean {
-        try { return localStorage.getItem('webmail.install-banner-dismissed') === '1'; } catch { return false; }
+        try {
+            const raw = localStorage.getItem('webmail.install-banner-dismissed');
+            if (!raw) return false;
+            if (raw === '1') return true;
+            const at = Number(raw);
+            if (!Number.isFinite(at)) return false;
+            return Date.now() - at < INSTALL_COOLDOWN_MS;
+        } catch { return false; }
     }
 
     async function handleInstallClick() {
@@ -302,7 +314,7 @@
 
     $effect(() => {
         if (installDismissed) {
-            try { localStorage.setItem('webmail.install-banner-dismissed', '1'); } catch { /* noop */ }
+            try { localStorage.setItem('webmail.install-banner-dismissed', String(Date.now())); } catch { /* noop */ }
         }
     });
 
@@ -747,8 +759,23 @@
         }
     }
 
+    // The global field only ever searches mail — there is no calendar,
+    // drive or chat index behind it. Rather than let the label imply
+    // otherwise while sitting in another app, say "mail" explicitly and
+    // switch to Mail as soon as a query is entered, so what the user is
+    // told and what happens are the same thing.
+    const searchLabel = $derived(
+        ui.app === 'mail' ? 'Search mail' : 'Search mail (switches to Mail)'
+    );
+    const searchPlaceholder = $derived(
+        ui.app === 'mail'
+            ? 'Search — try from:alice or has:attachment…'
+            : 'Search mail — from:alice, has:attachment…'
+    );
+
     function onSearchChange(value: string) {
         searchInput = value;
+        if (value.trim() && ui.app !== 'mail') ui.app = 'mail';
         if (searchDebounce) clearTimeout(searchDebounce);
         searchDebounce = setTimeout(() => {
             ui.search = searchInput.trim();
@@ -1409,13 +1436,13 @@
             <Icon name="search" size={16} />
             <input
                 type="search"
-                placeholder="Search — try from:alice or has:attachment…"
+                placeholder={searchPlaceholder}
                 value={searchInput}
                 bind:this={searchInputEl}
                 oninput={(e) => { onSearchChange((e.currentTarget as HTMLInputElement).value); searchSuggestOpen = true; }}
                 onfocus={() => (searchSuggestOpen = true)}
                 onblur={() => setTimeout(() => (searchSuggestOpen = false), 150)}
-                aria-label="Search messages"
+                aria-label={searchLabel}
                 data-testid="search-input"
             />
             {#if (ui.search || '').trim()}
@@ -1681,7 +1708,7 @@
         <div class="install-bar" data-testid="install-banner">
             <div class="install-msg">
                 <Icon name="download" size={14} />
-                <span>Install Webmail as an app for offline access, native window, and faster boot.</span>
+                <span>Install as an app — offline access and faster boot.</span>
             </div>
             <div class="install-actions">
                 <button type="button" class="btn btn-secondary" onclick={() => { installDismissed = true; }} data-testid="install-dismiss">Not now</button>
@@ -2732,7 +2759,9 @@
         align-items: center;
         justify-content: space-between;
         gap: 14px;
-        padding: 8px 16px;
+        /* Kept tight: this sits above the mailbox and every pixel here is
+           one the message list doesn't get. */
+        padding: 5px 16px;
         background: linear-gradient(90deg,
             color-mix(in srgb, var(--accent) 8%, var(--bg-surface)),
             color-mix(in srgb, #d268f4 4%, var(--bg-surface)));
