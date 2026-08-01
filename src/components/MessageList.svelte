@@ -29,6 +29,10 @@
         onMarkFolderRead: () => void;
         onSummariseAndMarkRead: () => void;
         onLoadMore?: () => void;
+        /** The page size the list is actually fetched with. Pagination has
+         *  to divide by the same number the fetch used, or the footer
+         *  reports a page count for a list nobody is looking at. */
+        effectivePageSize?: number;
         appendingMore?: boolean;
         scanState?: ScanState | null;
         onMove?: (uid: number, dest: string) => void;
@@ -36,7 +40,8 @@
     }
     let {
         onSelect, onStar, onUnread, onTrash, onArchive,
-        onPageChange, onMarkFolderRead, onSummariseAndMarkRead, onLoadMore, appendingMore = false,
+        onPageChange, onMarkFolderRead, onSummariseAndMarkRead, onLoadMore,
+        effectivePageSize = 25, appendingMore = false,
         scanState = null,
         onMove, onBlockSender
     }: Props = $props();
@@ -64,14 +69,18 @@
         if (remaining < 120) onLoadMore();
     }
 
-    const PAGE_SIZE = 25;
     // Pagination footer is meaningless in unlimited mode (the crawler/infinite
     // scroll handles loading), so hide it when the user picked unlimited or
     // a size big enough that the prev/next buttons would just confuse.
+    //
+    // The denominator must use the size the list is actually fetched with.
+    // It was hardcoded to 25 while Layout fetched settings.pageSize, so a
+    // user on 50/page saw twice the pages that existed — "page 1 of 12"
+    // for a mailbox that ended at 6, with the back half all empty.
     const totalPages = $derived(
         settings.pageSize === 'unlimited'
             ? 1
-            : Math.max(1, Math.ceil((ui.messagesTotal || 0) / PAGE_SIZE))
+            : Math.max(1, Math.ceil((ui.messagesTotal || 0) / Math.max(1, effectivePageSize)))
     );
 
     function flagged(flags: string[]) {

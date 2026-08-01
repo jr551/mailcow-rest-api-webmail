@@ -819,7 +819,7 @@
                     });
                     if (ctrl.signal.aborted) break;
                     for (const msg of r.messages) {
-                        const key = `${path} ${msg.uid}`;
+                        const key = `${path}${msg.uid}`;
                         if (seenKey.has(key)) continue;
                         seenKey.add(key);
                         aggregated.push({ ...msg, mailbox: path });
@@ -1751,6 +1751,7 @@
                 onMarkFolderRead={markFolderRead}
                 onSummariseAndMarkRead={summariseAndMarkRead}
                 onLoadMore={loadMoreMessages}
+                effectivePageSize={pageSize()}
                 {appendingMore}
                 scanState={globalScanState ?? scanState}
                 onMove={moveTo}

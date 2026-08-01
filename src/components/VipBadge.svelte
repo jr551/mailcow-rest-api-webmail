@@ -18,15 +18,21 @@
     );
 </script>
 
+<!-- The glow is a decorative ring around the avatar. It carried the same
+     aria-label as the badge below, so assistive tech announced the one
+     visible concept twice. It keeps `title` for the mouse tooltip and is
+     hidden from the accessibility tree; the badge is the single
+     accessible name. -->
 <span
     class="vip-glow {direction === 'to' ? 'glow-to' : 'glow-from'}"
     title={tooltip}
-    aria-label={tooltip}
+    aria-hidden="true"
 ></span>
 <span
     class="vip-badge"
     style="width: {size}px; height: {size}px; font-size: {Math.round(size * 0.78)}px;"
     title={tooltip}
+    role="img"
     aria-label={tooltip}
 >
     <span aria-hidden="true">👨‍👩‍👧</span>
