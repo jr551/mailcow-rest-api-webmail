@@ -75,6 +75,17 @@ interface AuthState {
     expiringSoon: boolean;
 }
 
+// recallCreds decodes the vault, which can throw on a corrupted entry.
+// load() runs at module init, so a throw there would take the whole app
+// down — treat any failure as "not remembered".
+function hasRememberedCreds(user: string): boolean {
+    try {
+        return recallCreds(user) !== null;
+    } catch {
+        return false;
+    }
+}
+
 function load(): SavedState {
     try {
         let raw = sessionStorage.getItem(STORAGE_KEY);
@@ -99,9 +110,19 @@ function load(): SavedState {
             }
             return { sessions: [], activeUser: null };
         }
-        const valid = parsed.sessions.filter((s) =>
+        // Keep an expired session when we still hold vault creds for it.
+        //
+        // Session tokens live ~1h, so a PWA reopened the next morning always
+        // loads an expired one. Dropping it here made getSession() return
+        // null, and every renewal path (tick(), the visibilitychange hook,
+        // the 401 retry in api.ts) bails on a null session — so the vault
+        // creds were never tried and the user got the login form despite
+        // "stay signed in". Hand the stale session through instead and let
+        // those paths re-mint it; tick() removes it if there are no creds.
+        const wellFormed = parsed.sessions.filter((s) =>
             s && typeof s.user === 'string' && typeof s.token === 'string' &&
-            typeof s.expiresAt === 'number' && s.expiresAt > Date.now());
+            typeof s.expiresAt === 'number');
+        const valid = wellFormed.filter((s) => s.expiresAt > Date.now() || hasRememberedCreds(s.user));
         const activeUser =
             (parsed.activeUser && valid.find((s) => s.user === parsed.activeUser)?.user) ||
             valid[0]?.user || null;

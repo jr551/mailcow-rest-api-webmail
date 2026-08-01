@@ -23,7 +23,7 @@ import {
     setSpamSweepBatchSize, setAiSortSweepSpam, setPreSendCheck,
     setComposeHistorySummary, setVipAddresses, setWeatherChip,
     setWeatherLatLon, setWeatherUnits, setCalendarTicker,
-    capabilities
+    capabilities, aiAuthKey
 } from './settings.svelte';
 import { voicePrefs, setVoiceEnabled, setVoiceId } from './voice.svelte';
 import { setSkin, setCustomAccent, skinState } from './skins.svelte';
@@ -1002,7 +1002,7 @@ export function resolveModel(): string {
 
 export function resolveApiKey(): string {
     if (capabilities.aiConfig?.configured) {
-        return capabilities.aiConfig.apiKey;
+        return aiAuthKey();
     }
     return settings.llm.apiKey;
 }

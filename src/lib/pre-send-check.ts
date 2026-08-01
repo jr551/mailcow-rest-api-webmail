@@ -6,7 +6,7 @@
 // The user can bypass with the modal's "Send anyway" button OR by
 // holding Shift while clicking Send (skips the call entirely).
 
-import { settings, capabilities } from './settings.svelte';
+import { settings, capabilities, aiAuthKey } from './settings.svelte';
 import { cachedChatCompletion } from './ai-cache.svelte';
 
 interface ProviderCfg { baseUrl: string; model: string; apiKey: string; }
@@ -15,7 +15,7 @@ function resolveProvider(): ProviderCfg | null {
         return {
             baseUrl: capabilities.aiConfig.baseUrl.replace(/\/+$/, ''),
             model: capabilities.aiConfig.model,
-            apiKey: capabilities.aiConfig.apiKey
+            apiKey: aiAuthKey()
         };
     }
     const llm = settings.llm;

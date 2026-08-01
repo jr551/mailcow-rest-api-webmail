@@ -894,6 +894,10 @@ export interface AiConfig {
     kind: string;
     baseUrl: string;
     model: string;
+    // When true, baseUrl is our own same-origin proxy and callers must
+    // authenticate with the session token (see aiAuthKey()), not apiKey —
+    // the server keeps the provider key to itself.
+    proxied?: boolean;
     apiKey: string;
 }
 

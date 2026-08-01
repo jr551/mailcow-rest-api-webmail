@@ -9,9 +9,14 @@
 //     accounts isolated. POST/PUT/DELETE never touched.
 //   * Push events — show a notification with title from data + click → focus or open.
 //
-// Cache name is bumped on every webmail build so old caches are evicted.
+// Cache name is stamped at build time (vite.config.ts → swBuildVersion),
+// derived from the hashed asset names, so every build that changes any
+// output produces a different worker. That is what makes the browser fire
+// `updatefound` and the SPA show its update prompt; a hand-maintained
+// constant silently stopped doing that whenever someone forgot to bump it.
+// The literal below is the dev fallback — builds replace it.
 
-const VERSION = 'v6-2026-05-04-update-prompt';
+const VERSION = '__BUILD_VERSION__';
 const SHELL_CACHE = 'webmail-shell-' + VERSION;
 const API_CACHE = 'webmail-api-' + VERSION;
 // Endpoints whose GET responses are safe to cache for offline reads.
@@ -68,7 +73,28 @@ function userScopedKey(req) {
     const auth = req.headers.get('authorization') || '';
     const m = auth.match(/^Bearer\s+(\S+)/i);
     const tag = m ? `b-${m[1].slice(0, 8)}` : 'anon';
-    return new Request(`${req.url}#user=${tag}`, { method: 'GET' });
+    // The scope must live in the query, not the fragment: the Cache API
+    // strips fragments before matching, so `#user=` meant every account
+    // shared one entry per URL and an offline account B could be served
+    // account A's cached folder list and messages.
+    const u = new URL(req.url);
+    u.searchParams.set('__swuser', tag);
+    return new Request(u.toString(), { method: 'GET' });
+}
+
+// Never store a response whose type contradicts the request. nginx's SPA
+// fallback used to answer a deleted /webmail/assets/*.js with 200 + HTML;
+// caching that meant the chunk stayed broken until VERSION changed by
+// hand. nginx now 404s those paths, but keep the client-side guard —
+// a proxy, captive portal, or error page can do the same thing.
+function isSaneToCache(req, res) {
+    const dest = req.destination;
+    const type = (res.headers.get('content-type') || '').toLowerCase();
+    if (!type) return true;
+    const isHtml = type.includes('text/html');
+    if ((dest === 'script' || dest === 'worker' || dest === 'style') && isHtml) return false;
+    if (/\.(?:js|mjs|css|wasm)(?:\?|$)/.test(new URL(req.url).pathname) && isHtml) return false;
+    return true;
 }
 
 function isCacheableApi(url) {
@@ -123,7 +149,7 @@ self.addEventListener('fetch', (event) => {
         const cached = await cache.match(req);
         // Stale-while-revalidate: return cache immediately if present, refresh in background.
         const networkPromise = fetch(req).then((res) => {
-            if (res.ok && (res.type === 'basic' || res.type === 'default')) {
+            if (res.ok && (res.type === 'basic' || res.type === 'default') && isSaneToCache(req, res)) {
                 cache.put(req, res.clone()).catch(() => {});
             }
             return res;

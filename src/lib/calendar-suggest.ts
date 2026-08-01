@@ -2,7 +2,7 @@
 // an email body. Single completion, no tools — keeps the budget tight and
 // the latency low. Returns a partial CalEvent ready to seed EventModal.
 
-import { settings, capabilities } from './settings.svelte';
+import { settings, capabilities, aiAuthKey } from './settings.svelte';
 import type { CalEvent } from './calendar.svelte';
 
 export interface SuggestInput {
@@ -70,7 +70,7 @@ function resolveModel(): string {
 }
 
 function resolveApiKey(): string {
-    if (capabilities.aiConfig?.configured) return capabilities.aiConfig.apiKey;
+    if (capabilities.aiConfig?.configured) return aiAuthKey();
     return settings.llm.apiKey;
 }
 

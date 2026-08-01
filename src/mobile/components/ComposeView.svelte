@@ -83,14 +83,19 @@
 
     $effect(() => {
         if (replyTo && mode !== 'new') {
-            subject = replyTo.envelope.subject || '';
-            if (!subject.toLowerCase().startsWith('re:') && mode !== 'forward') {
-                subject = 'Re: ' + subject;
+            // Build the subject in a local and assign once at the end.
+            // Assigning to `subject` and then reading it back made the
+            // effect depend on its own output, so every keystroke in the
+            // subject field re-ran this block and overwrote whatever the
+            // user had typed into the body.
+            let nextSubject = replyTo.envelope.subject || '';
+            if (!nextSubject.toLowerCase().startsWith('re:') && mode !== 'forward') {
+                nextSubject = 'Re: ' + nextSubject;
             }
             // HTML-only emails have no text part; fall back to stripping HTML.
             const sourceText = replyTo.text || htmlToPlainText(replyTo.html || '');
             if (mode === 'forward') {
-                subject = subject.toLowerCase().startsWith('fwd:') ? subject : 'Fwd: ' + subject;
+                nextSubject = nextSubject.toLowerCase().startsWith('fwd:') ? nextSubject : 'Fwd: ' + nextSubject;
                 body = `\n\n--- Forwarded message ---\nFrom: ${replyTo.envelope.from?.map((a) => a.name || a.address).join(', ')}\nDate: ${replyTo.envelope.date}\nSubject: ${replyTo.envelope.subject}\n\n${sourceText}`;
             } else {
                 body = `\n\nOn ${replyTo.envelope.date}, ${replyTo.envelope.from?.[0]?.name || replyTo.envelope.from?.[0]?.address} wrote:\n\n${sourceText}`;
@@ -106,6 +111,7 @@
                 cc = all.join(', ');
             }
             from = pickReplyFrom();
+            subject = nextSubject;
         }
     });
 

@@ -137,16 +137,27 @@ flowchart LR
     API --> SMTP[mailcow Postfix SMTP]
     API --> DB[mailcow MariaDB]
     API --> SOGo[SOGo CalDAV]
-    Browser --> LiteLLM[LiteLLM / OpenAI-compatible proxy]
+    API --> LLM[LLM provider]
 ```
 
 The webmail package is a static client-side app. The Docker image is only nginx serving built files; there is no webmail application server doing mailbox or AI processing inside this repo.
 
 ## AI And Key Privacy
 
-For AI key privacy, do not put one shared provider key directly into a public static frontend. Use LiteLLM or another OpenAI-compatible key broker in front of the model provider, then configure `mailcow-rest-api` to issue scoped client keys. LiteLLM is not included in this repo. My deployment uses DeepSeek V4 Flash through a proxy.
+The browser never receives a provider API key. AI requests go to
+`POST /v1/ai/llm/chat/completions` on `mailcow-rest-api`, authenticated with
+the session token the client already holds; the server attaches the provider
+key and forwards the request. `GET /v1/ai/config` reports `proxied: true` and
+a same-origin base URL, so the client treats it like any other
+OpenAI-compatible endpoint. My deployment uses DeepSeek V4 Flash.
 
-Browser-local user keys are possible for personal use, but they are not a safe way to distribute one shared key to all users.
+This replaces an earlier design that brokered per-user scoped keys through
+LiteLLM and shipped them to the browser. Handing a key of any kind to a public
+static frontend means anyone who can read the page can use it, so the key now
+stays server-side and the session is the only credential the client holds.
+
+Browser-local user keys still work for personal use (Settings → AI), but they
+are not a safe way to distribute one shared key to all users.
 
 ## Screenshots
 

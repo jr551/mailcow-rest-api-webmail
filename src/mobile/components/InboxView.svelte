@@ -349,6 +349,15 @@
     let aiSortError = $state<string | null>(null);
     let aiRankings = $state<InboxSortRanking[]>([]);
 
+    // UID set of the last list we actually sent to the model. The effect
+    // re-runs on every mutation of mobileState.messages — the 60s mailbox
+    // refresh, pull-to-refresh, a message being marked read — and each run
+    // used to fire a fresh LLM sort. Desktop removed the same pattern for
+    // burning the user's budget without their consent; here the user has
+    // opted in by choosing the ai-sorted filter, so we keep the automatic
+    // sort but only when the set of messages genuinely changed.
+    let lastSortedKey = '';
+
     $effect(() => {
         if (mobileState.filter !== 'ai-sorted') {
             aiSortError = null;
@@ -357,8 +366,12 @@
         const msgs = mobileState.messages;
         if (msgs.length === 0) {
             aiRankings = [];
+            lastSortedKey = '';
             return;
         }
+        const key = msgs.map((m) => m.uid).sort((a, b) => a - b).join(',');
+        if (key === lastSortedKey) return;
+        lastSortedKey = key;
         aiSortLoading = true;
         aiSortError = null;
         sortInboxClient(msgs.map((m) => ({

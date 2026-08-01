@@ -41,7 +41,39 @@ function unquote(v: string): string {
     return v;
 }
 
+// Remember URLs the proxy has already refused. The message-detail effect
+// re-runs whenever a background timer rewrites a store it reads (session
+// renewal, capability probe), and without this every re-run re-requested
+// every failed image — production logs showed the same >1 MB image being
+// re-fetched every ~30 s for as long as the message stayed open. Server-side
+// caching alone doesn't help: the request still crosses the wire.
+//
+// Keyed by URL, capped so a long session can't grow it without bound.
+const failedUrls = new Map<string, number>();
+const FAILED_TTL_MS = 30 * 60 * 1000;
+const FAILED_MAX = 500;
+
+function isKnownBad(url: string): boolean {
+    const at = failedUrls.get(url);
+    if (at === undefined) return false;
+    if (Date.now() - at > FAILED_TTL_MS) {
+        failedUrls.delete(url);
+        return false;
+    }
+    return true;
+}
+
+function markBad(url: string) {
+    if (failedUrls.size >= FAILED_MAX) {
+        // Cheap eviction: drop the oldest insertion (Map preserves order).
+        const oldest = failedUrls.keys().next();
+        if (!oldest.done) failedUrls.delete(oldest.value);
+    }
+    failedUrls.set(url, Date.now());
+}
+
 async function fetchAsDataUrl(url: string, signal?: AbortSignal): Promise<string | null> {
+    if (isKnownBad(url)) return null;
     const session = getSession();
     const headers: Record<string, string> = {};
     if (session) headers.authorization = `Bearer ${session.token}`;
@@ -58,7 +90,13 @@ async function fetchAsDataUrl(url: string, signal?: AbortSignal): Promise<string
         markProxyUnhealthy();
         return null;
     }
-    if (!res.ok) return null;
+    if (!res.ok) {
+        // 4xx is a property of the image (too large, wrong type, gone) and
+        // won't change on retry; 5xx we also back off on, since the server
+        // negatively caches these for hours anyway.
+        markBad(url);
+        return null;
+    }
     if (!proxyHealthy) proxyHealthy = true; // recovered
     const blob = await res.blob();
     return await new Promise<string>((resolve, reject) => {

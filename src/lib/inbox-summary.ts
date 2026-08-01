@@ -2,7 +2,7 @@
 // summary + a severity-coloured action list. Same pattern as
 // email-actions.svelte.ts: browser → user's OpenAI-compatible provider.
 
-import { settings, capabilities } from './settings.svelte';
+import { settings, capabilities, aiAuthKey } from './settings.svelte';
 import { cachedChatCompletion } from './ai-cache.svelte';
 import { redactSecrets } from './redact';
 import { maybeFlagCooldown, aiCooldownActive, aiCooldownLabel } from './ai-cooldown.svelte';
@@ -73,7 +73,7 @@ function resolveModel(): string {
     return defaults[llm.preset] || defaults.openai;
 }
 function resolveApiKey(): string {
-    if (capabilities.aiConfig?.configured) return capabilities.aiConfig.apiKey;
+    if (capabilities.aiConfig?.configured) return aiAuthKey();
     return settings.llm.apiKey;
 }
 function isConfigured(): boolean {

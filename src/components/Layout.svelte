@@ -1294,7 +1294,17 @@
         // Settings & trusted-senders sync via the hidden IMAP folder.
         // Best-effort: never blocks the UI on failure.
         import('../lib/settings-sync').then((m) => m.startSync()).catch(() => { /* offline / unsupported */ });
-        const capTimer = setInterval(probeCapabilities, 30_000);
+        // Skip the probe while the tab is hidden or the browser knows it's
+        // offline. It used to run unconditionally forever, so a backgrounded
+        // or disconnected tab generated a failed /v1/ai/config every 30s —
+        // which is most of the "Failed to fetch" noise in the error log, and
+        // enough consecutive failures to trip the maintenance overlay on a
+        // user who had simply lost wifi.
+        const capTimer = setInterval(() => {
+            if (typeof document !== 'undefined' && document.hidden) return;
+            if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+            void probeCapabilities();
+        }, 30_000);
         loadShortcuts();
         loadMailboxInfo();
         checkLastLogin();

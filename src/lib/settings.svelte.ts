@@ -4,6 +4,7 @@
 // of (or as a fallback to) the server's env-default.
 
 import { getAiConfig, getTtsConfig, type AiConfig, type TtsConfig } from './api';
+import { getSession } from './auth.svelte';
 
 const STORAGE_KEY = 'webmail.settings.v1';
 
@@ -642,6 +643,22 @@ const capState = $state<{
 
 export const capabilities = capState;
 
+// Replace a capability slot only when its content actually changed.
+//
+// This runs on a 30s timer. Assigning a fresh object every time — even an
+// identical one — invalidated every $effect that reads capabilities.*,
+// and several of those effects kick off real work (inbox briefing, AI
+// sort, image proxying, phishing scan). The result was a background
+// workload that restarted every 30 seconds for as long as the app stayed
+// open. Comparing first keeps the reference stable when nothing moved.
+function assignIfChanged<K extends keyof typeof capState>(key: K, next: (typeof capState)[K]): boolean {
+    try {
+        if (JSON.stringify(capState[key]) === JSON.stringify(next)) return false;
+    } catch { /* unserializable — fall through and assign */ }
+    capState[key] = next;
+    return true;
+}
+
 export async function probeCapabilities(): Promise<void> {
     try {
         const [aiRes, healthRes, configRes, ttsRes] = await Promise.all([
@@ -650,14 +667,13 @@ export async function probeCapabilities(): Promise<void> {
             getAiConfig().catch(() => null),
             getTtsConfig().catch(() => null)
         ]);
-        if (aiRes.ok) capState.caps = await aiRes.json();
+        if (aiRes.ok) assignIfChanged('caps', await aiRes.json());
         if (healthRes.ok) {
             const h = await healthRes.json();
-            capState.server = h.capabilities || { ai: false, ocr: false, smtp: false, drive: false };
+            assignIfChanged('server', h.capabilities || { ai: false, ocr: false, smtp: false, drive: false });
         }
         if (configRes) {
-            capState.aiConfig = configRes;
-            saveCachedAiConfig(configRes);
+            if (assignIfChanged('aiConfig', configRes)) saveCachedAiConfig(configRes);
         }
         // If configRes failed but we have a cached one, keep using it.
         // Only clear the cache when the server explicitly tells us AI
@@ -694,6 +710,22 @@ export function aiAvailable(): boolean {
 // True when the server exposes a client-usable AI config (via /v1/ai/config).
 export function serverAiAvailable(): boolean {
     return !!capState.aiConfig?.configured;
+}
+
+// Bearer credential for the server-provided AI endpoint.
+//
+// The server no longer hands provider keys to the browser: /v1/ai/config
+// returns `proxied: true` and a same-origin baseUrl, and we authenticate to
+// it with the session token we already hold. Resolved per call rather than
+// stored, so a renewed session is picked up immediately and no token is
+// ever written to the aiConfig localStorage cache.
+export function aiAuthKey(): string {
+    const cfg = capState.aiConfig;
+    if (cfg?.configured) {
+        if (cfg.proxied) return getSession()?.token || '';
+        return cfg.apiKey;
+    }
+    return state.llm.apiKey;
 }
 
 // True when the server has SMTP wired up (SMTP_HOST env var is set).

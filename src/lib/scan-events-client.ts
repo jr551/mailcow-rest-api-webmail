@@ -6,7 +6,7 @@
 // Mirrors sort-inbox-client.ts: browser → LiteLLM proxy with the
 // per-user scoped key. Same cache + cooldown plumbing.
 
-import { settings, capabilities } from './settings.svelte';
+import { settings, capabilities, aiAuthKey } from './settings.svelte';
 import { cachedChatCompletion } from './ai-cache.svelte';
 import { maybeFlagCooldown, aiCooldownActive, aiCooldownLabel } from './ai-cooldown.svelte';
 
@@ -58,7 +58,7 @@ function resolve(): { baseUrl: string; model: string; apiKey: string } | null {
         return {
             baseUrl: capabilities.aiConfig.baseUrl.replace(/\/+$/, ''),
             model: capabilities.aiConfig.model,
-            apiKey: capabilities.aiConfig.apiKey
+            apiKey: aiAuthKey()
         };
     }
     const llm = settings.llm;

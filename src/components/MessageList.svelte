@@ -163,7 +163,12 @@
     // sees something happen rather than a silent disappearance.
     let ruleAnimUids = $state(new Set<number>());
     let ruleDoneUids = $state(new Set<number>());
-    if (typeof window !== 'undefined') {
+    // Registered via $effect so it is torn down with the component. As a
+    // bare top-level addEventListener it survived every remount (app-surface
+    // switches), stacking another handler holding stale component state
+    // each time.
+    $effect(() => {
+        if (typeof window === 'undefined') return;
         const onRule = (e: Event) => {
             const ev = e as CustomEvent<{ path: string; uid: number; phase: 'start' | 'done' | 'error' }>;
             if (!ev.detail) return;
@@ -184,7 +189,8 @@
             }
         };
         window.addEventListener('webmail:client-rule', onRule);
-    }
+        return () => window.removeEventListener('webmail:client-rule', onRule);
+    });
 
     // AI inbox-sort state.
     let aiSortLoading = $state(false);
