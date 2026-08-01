@@ -93,7 +93,12 @@ export function buildIframeSrcDoc(html: string, theme: 'light' | 'dark'): string
     html { margin: 0; padding: 0; }
     body { margin: 0 auto; padding: 16px 18px; background: ${bg}; color: ${fg};
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        font-size: 14px; line-height: 1.6; max-width: 760px; }
+        font-size: 14px; line-height: 1.6; max-width: 820px; }
+    /* Marketing mail is nearly always one fixed-width table (typically
+     * 600px). Left-aligned inside a wider pane it reads as broken layout,
+     * with the sender's background colour filling the empty space beside
+     * it — so centre any top-level table in the available width. */
+    body > table, body > center > table { margin-left: auto; margin-right: auto; }
     /* Heuristic: if the email forces a white background, dim it in dark mode
      * so it doesn't blow out. Authors who set explicit dark-friendly colors
      * still win because their inline styles are more specific. */

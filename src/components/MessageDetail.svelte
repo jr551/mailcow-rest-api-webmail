@@ -1737,7 +1737,9 @@
     }
     .detail-header {
         flex: 0 0 auto;
-        padding: 18px 24px 14px;
+        /* Kept deliberately tight: on a 640px-tall window the header used
+         * to take half the pane, leaving the message itself ~320px. */
+        padding: 12px 20px 10px;
         border-bottom: 1px solid var(--border-subtle);
     }
     /* Notification-bubble layout: hide the avatar+sender block but keep
@@ -1807,8 +1809,8 @@
         .mobile-back { display: inline-flex; margin-bottom: 8px; }
     }
     .subject {
-        margin: 0 0 14px;
-        font-size: 21px;
+        margin: 0 0 9px;
+        font-size: 19px;
         line-height: 1.25;
         letter-spacing: -0.015em;
         font-weight: 700;
@@ -1826,8 +1828,8 @@
         flex: 0 0 auto;
     }
     .avatar-lg {
-        width: 40px;
-        height: 40px;
+        width: 34px;
+        height: 34px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -2243,7 +2245,7 @@
         gap: 8px;
     }
     .view-toggle {
-        margin-top: 14px;
+        margin-top: 9px;
         display: flex;
         align-items: center;
         gap: 12px;

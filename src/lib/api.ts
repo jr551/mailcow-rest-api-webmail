@@ -907,7 +907,9 @@ export async function getAiConfig(): Promise<AiConfig> {
 
 export interface TtsConfig {
     configured: boolean;
-    apiKey: string;
+    /** Never sent by the server — voice runs on the browser's own
+     *  SpeechSynthesis. Kept optional so older cached bundles still parse. */
+    apiKey?: string;
 }
 
 export async function getTtsConfig(): Promise<TtsConfig> {

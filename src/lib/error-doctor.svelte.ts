@@ -72,7 +72,12 @@ const SILENT_ROUTES: RegExp[] = [
     /\/v1\/ai\/phishing-scan$/,
     // AI sort is opt-in but failures here surface inline in the UI
     // already (loader hides + retry button). No modal needed.
-    /\/v1\/ai\/sort-inbox$/
+    /\/v1\/ai\/sort-inbox$/,
+    // The settings-sync hidden folder is created lazily, so the very first
+    // read after sign-in legitimately fails until it exists. Sync is
+    // best-effort and already falls back to local settings — a modal here
+    // just told a brand-new user their server was broken.
+    /\/v1\/mailboxes\/\.storage_webmailsettings/
 ];
 
 // Per-URL+status throttle so a flapping endpoint doesn't pile up 20
