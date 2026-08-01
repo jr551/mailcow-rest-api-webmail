@@ -2324,12 +2324,16 @@
         position: relative;
         width: 100%;
         height: 100%;
-        min-height: 320px;
+        /* Low enough to fit inside a short window. At 320px the frame was
+         * taller than the space left under the header, so .body scrolled
+         * *and* the message scrolled inside it — two nested scrollbars for
+         * one document. */
+        min-height: 200px;
     }
     .html-frame {
         width: 100%;
         height: 100%;
-        min-height: 320px;
+        min-height: 200px;
         border: none;
         display: block;
         background: var(--bg-surface);

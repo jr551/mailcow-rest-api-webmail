@@ -33,9 +33,15 @@ export function renderMarkdown(src: string): string {
     // Bold (**...**)
     text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
-    // Italic (*...* or _..._) — but not inside already-rendered tags
+    // Italic (*...* or _..._) — but not inside already-rendered tags.
     text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    text = text.replace(/_([^_]+)_/g, '<em>$1</em>');
+    // Underscore emphasis only counts at word boundaries. Intra-word
+    // underscores are far more likely to be an identifier than emphasis —
+    // UI_PROXY_OK, snake_case names, env vars like LLM_API_KEY — and
+    // treating them as markup rendered them as "UI<em>PROXY</em>OK",
+    // silently corrupting the text the assistant meant to show. This is
+    // what CommonMark and GFM do for the same reason.
+    text = text.replace(/(^|[\s([{<"'])_([^_\n]+)_(?=$|[\s)\]}>.,;:!?"'])/g, '$1<em>$2</em>');
 
     // Strikethrough (~~...~~)
     text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>');
