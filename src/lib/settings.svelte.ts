@@ -124,6 +124,11 @@ export interface Settings {
     weatherUnits: 'celsius' | 'fahrenheit';
     /** Show the next-event calendar ticker in the desktop top bar. */
     calendarTicker: boolean;
+    /** Show the event's actual title in the global header. Off by default:
+     *  the header is visible from Mail, AI, Drive and Settings, so a title
+     *  there is on screen during a share or to anyone glancing over. The
+     *  ticker still shows timing, which is the useful part. */
+    calendarTickerTitles: boolean;
     /** Client-side rules. Run when the inbox list loads — match on
      *  envelope fields and either move the message somewhere, archive
      *  it, or kick off an AI action that pops the row away while it
@@ -216,6 +221,7 @@ function load(): Settings {
                 weatherLongitude: typeof parsed.weatherLongitude === 'number' ? parsed.weatherLongitude : -0.1278,
                 weatherUnits: parsed.weatherUnits === 'fahrenheit' ? 'fahrenheit' : 'celsius',
                 calendarTicker: parsed.calendarTicker !== false,
+                calendarTickerTitles: !!parsed.calendarTickerTitles,
                 clientRules: Array.isArray(parsed.clientRules)
                     ? parsed.clientRules.filter(isValidClientRule)
                     : []
@@ -257,6 +263,7 @@ function load(): Settings {
         weatherLongitude: -0.1278,
         weatherUnits: 'celsius',
         calendarTicker: true,
+        calendarTickerTitles: false,
         clientRules: []
     };
 }
@@ -538,6 +545,11 @@ export function setWeatherUnits(units: 'celsius' | 'fahrenheit') {
 
 export function setCalendarTicker(on: boolean) {
     state.calendarTicker = on;
+    persist(state);
+}
+
+export function setCalendarTickerTitles(on: boolean) {
+    state.calendarTickerTitles = on;
     persist(state);
 }
 

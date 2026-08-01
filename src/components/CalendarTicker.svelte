@@ -6,6 +6,7 @@
     import { onMount } from 'svelte';
     import { listEvents, type CalEvent } from '../lib/calendar.svelte';
     import { ui } from '../lib/store.svelte';
+    import { settings, setCalendarTickerTitles } from '../lib/settings.svelte';
 
     interface Props {
         rotateMs?: number;
@@ -112,9 +113,15 @@
         return relative(start);
     });
 
+    // The header is on screen from Mail, AI, Drive and Settings, so an
+    // event title here is visible during a screen share or to anyone
+    // glancing over. Default to a count; the timing — the part that makes
+    // the ticker useful — is still shown either way.
     let title = $derived(
         current
-            ? `${current.title || '(no title)'} — ${new Date(current.start).toLocaleString()}\n${upcoming.length} upcoming · ⌄ for options`
+            ? (settings.calendarTickerTitles
+                ? `${current.title || '(no title)'} — ${new Date(current.start).toLocaleString()}\n${upcoming.length} upcoming · ⌄ for options`
+                : `${upcoming.length} upcoming ${upcoming.length === 1 ? 'event' : 'events'} · ⌄ for options`)
             : 'No upcoming events · ⌄ for options'
     );
 
@@ -182,7 +189,9 @@
             {#key slideKey}
                 <span class="pane">
                     <span class="when">{label}</span>
-                    <span class="t">{current.title || '(no title)'}</span>
+                    <span class="t">{settings.calendarTickerTitles
+                        ? (current.title || '(no title)')
+                        : `${upcoming.length} upcoming ${upcoming.length === 1 ? 'event' : 'events'}`}</span>
                 </span>
             {/key}
             {#if upcoming.length > 1}
@@ -223,6 +232,15 @@
         </button>
         <button class="menu-item" class:active={style === 'duration'} onclick={() => { saveStyle('duration'); menuOpen = false; }}>
             ⏱ Duration <span class="ex">1h30</span>
+        </button>
+        <div class="menu-section">Privacy</div>
+        <button
+            class="menu-item"
+            class:active={settings.calendarTickerTitles}
+            onclick={() => { setCalendarTickerTitles(!settings.calendarTickerTitles); menuOpen = false; }}
+        >
+            {settings.calendarTickerTitles ? '🙈 Hide event titles' : '👁 Show event titles'}
+            <span class="ex">{settings.calendarTickerTitles ? 'visible now' : 'hidden'}</span>
         </button>
         <div class="menu-section">Navigate</div>
         <button class="menu-item" onclick={() => { nextEvent(); menuOpen = false; }}>⏭ Next event</button>

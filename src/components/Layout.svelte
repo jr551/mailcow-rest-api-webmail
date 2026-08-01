@@ -260,6 +260,43 @@
             window.addEventListener('pointerup', up);
         };
     }
+    const SIDEBAR_DEFAULT = 232;
+    const LIST_DEFAULT = 380;
+
+    // Keyboard handling shared by both splitters.
+    //
+    // Arrow keys were bound but the event kept its default, so the browser
+    // scrolled the pane instead of (or as well as) resizing. Home/End had
+    // no binding at all, and neither splitter reported a value — a
+    // focusable separator defaults to aria-valuenow=50, which is why both
+    // announced "50" regardless of where they actually sat.
+    function splitterKeys(
+        e: KeyboardEvent,
+        get: () => number,
+        set: (n: number) => void,
+        min: number,
+        max: number,
+        dflt: number
+    ) {
+        const step = e.shiftKey ? 48 : 16;
+        let next: number | null = null;
+        if (e.key === 'ArrowLeft') next = get() - step;
+        else if (e.key === 'ArrowRight') next = get() + step;
+        else if (e.key === 'Home') next = min;
+        else if (e.key === 'End') next = max;
+        else if (e.key === 'Enter' || e.key === ' ') next = dflt;
+        if (next === null) return;
+        e.preventDefault();
+        set(Math.max(min, Math.min(max, next)));
+    }
+
+    // Percentage of the splitter's own travel, so the announced value
+    // describes this pane rather than an arbitrary constant.
+    function splitterValue(current: number, min: number, max: number): number {
+        if (max <= min) return 50;
+        return Math.round(((current - min) / (max - min)) * 100);
+    }
+
     const startSidebarDrag = makeDragger(() => sidebarWidth, (n) => (sidebarWidth = n), SIDEBAR_MIN, SIDEBAR_MAX);
     const startDrag = makeDragger(() => listWidth, (n) => (listWidth = n), LIST_MIN, LIST_MAX);
 
@@ -363,9 +400,30 @@
     // the stale list on a folder switch when no cache is available — so the
     // glassy overlay covers blank space rather than the wrong folder's mail.
     let messagesShownFor: { user: string; path: string; page: number; search: string | undefined } | null = null;
+    // Unread / starred / attachment filtering happens on the server.
+    //
+    // These used to be applied client-side, which meant the whole mailbox
+    // had to be crawled into memory before the filter could mean anything:
+    // hundreds of rows mounted, a bulk-selection count that climbed past
+    // the page size, and a paginator describing a different data set than
+    // the one on screen. IMAP can answer all three directly, so the filter
+    // rides along with the search and pagination behaves normally.
+    function filterToken(): string {
+        switch (settings.listFilter) {
+            case 'unread': return 'is:unread';
+            case 'starred': return 'is:starred';
+            case 'attachments': return 'has:attachment';
+            default: return '';
+        }
+    }
+    function effectiveSearch(): string | undefined {
+        const parts = [ui.search || '', filterToken()].map((p) => p.trim()).filter(Boolean);
+        return parts.length ? parts.join(' ') : undefined;
+    }
+
     async function refreshMessages(opts: { resetPage?: boolean; force?: boolean } = {}) {
         if (opts.resetPage) ui.messagesPage = 0;
-        const search = ui.search || undefined;
+        const search = effectiveSearch();
 
         // Show cached list (allow stale on first paint — anything beats
         // blank when the user just opened the app on the train) right away.
@@ -568,6 +626,18 @@
         }
     }
 
+    // A filter change alters the server query, so the list has to be
+    // refetched and the page reset — otherwise page 5 of "all" becomes
+    // page 5 of a much shorter unread list, which is usually empty.
+    let lastFilterToken = filterToken();
+    $effect(() => {
+        const token = filterToken();
+        if (token === lastFilterToken) return;
+        lastFilterToken = token;
+        ui.messagesPage = 0;
+        void refreshMessages({ resetPage: true });
+    });
+
     // Auto-trigger the crawler when a filter or search would otherwise hide
     // most of the mailbox. We only kick off if there *is* more to load —
     // otherwise the strip would flash on every filter toggle even on small
@@ -582,12 +652,9 @@
         void filter; void sizeMode; void search; void path; void scope;
         // The all-folders search runs its own loop and owns the message list.
         if (scope === 'all') { cancelScan(); return; }
-        const needsFullScan =
-            filter === 'attachments' ||
-            filter === 'unread' ||
-            filter === 'starred' ||
-            !!search ||
-            sizeMode === 'unlimited';
+        // unread / starred / attachments are server-side filters now, so
+        // they page like anything else and must not trigger a full crawl.
+        const needsFullScan = sizeMode === 'unlimited';
         if (!needsFullScan) {
             cancelScan();
             return;
@@ -1755,13 +1822,20 @@
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize sidebar"
+            aria-valuenow={splitterValue(sidebarWidth, SIDEBAR_MIN, SIDEBAR_MAX)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuetext={`Sidebar ${Math.round(sidebarWidth)} pixels`}
+            title="Drag to resize · arrows to adjust · double-click to reset"
             tabindex="0"
-            onkeydown={(e) => {
-                if (e.key === 'ArrowLeft') sidebarWidth = Math.max(SIDEBAR_MIN, sidebarWidth - 16);
-                else if (e.key === 'ArrowRight') sidebarWidth = Math.min(SIDEBAR_MAX, sidebarWidth + 16);
-            }}
+            ondblclick={() => (sidebarWidth = SIDEBAR_DEFAULT)}
+            onkeydown={(e) => splitterKeys(e, () => sidebarWidth, (n) => (sidebarWidth = n), SIDEBAR_MIN, SIDEBAR_MAX, SIDEBAR_DEFAULT)}
         ></div>
-        <main class="content" style={`--list-width: ${listWidth}px`}>
+        <main
+            class="content"
+            class:no-selection={!ui.detail}
+            style={`--list-width: ${listWidth}px`}
+        >
             {#if $embeddedShortcut}
                 <ShortcutEmbed
                     shortcut={$embeddedShortcut}
@@ -1791,11 +1865,14 @@
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="Resize message list"
+                aria-valuenow={splitterValue(listWidth, LIST_MIN, LIST_MAX)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuetext={`Message list ${Math.round(listWidth)} pixels`}
+                title="Drag to resize · arrows to adjust · double-click to reset"
                 tabindex="0"
-                onkeydown={(e) => {
-                    if (e.key === 'ArrowLeft') listWidth = Math.max(LIST_MIN, listWidth - 16);
-                    else if (e.key === 'ArrowRight') listWidth = Math.min(LIST_MAX, listWidth + 16);
-                }}
+                ondblclick={() => (listWidth = LIST_DEFAULT)}
+                onkeydown={(e) => splitterKeys(e, () => listWidth, (n) => (listWidth = n), LIST_MIN, LIST_MAX, LIST_DEFAULT)}
                 data-testid="pane-resizer"
             ></div>
             <MessageDetail
@@ -2502,6 +2579,14 @@
         min-width: 0;
         min-height: 0;
     }
+    /* With no message open the reading pane shows only a placeholder, so
+       holding most of the width there squeezes sender, subject and the
+       filter row for no benefit. Give the space to the list until there is
+       something to read; the user's own splitter position still applies as
+       the floor. */
+    .content.no-selection {
+        grid-template-columns: minmax(var(--list-width, 380px), 55%) 6px 1fr;
+    }
     .pane-resizer {
         background: transparent;
         cursor: col-resize;
@@ -2512,10 +2597,38 @@
         transition: background-color var(--transition-fast);
     }
     .pane-resizer:hover,
-    .pane-resizer:focus,
+    .pane-resizer:focus-visible,
     .pane-resizer.dragging {
         background: color-mix(in srgb, var(--accent) 35%, transparent);
         outline: none;
+    }
+    /* A 6px divider is a hard pointer target and gives no hint that it can
+       be dragged at all. Widen the *hit* area either side without moving
+       the layout, and show a grip on hover/focus. */
+    .pane-resizer::before {
+        content: '';
+        position: absolute;
+        inset: 0 -5px;
+        cursor: col-resize;
+    }
+    .pane-resizer::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 2px;
+        height: 28px;
+        transform: translate(-50%, -50%);
+        border-radius: 2px;
+        background: var(--border-strong, var(--border-subtle));
+        opacity: 0;
+        transition: opacity var(--transition-fast);
+    }
+    .pane-resizer:hover::after,
+    .pane-resizer:focus-visible::after,
+    .pane-resizer.dragging::after { opacity: 1; }
+    .pane-resizer:focus-visible {
+        box-shadow: inset 0 0 0 2px var(--accent);
     }
     @media (max-width: 900px) {
         .content { grid-template-columns: 1fr; }
